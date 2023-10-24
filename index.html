@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Add a line to a map using a GeoJSON source</title>
+        <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+        <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet">
+        <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+        <style>
+        body { margin: 0; padding: 0;  }
+        #map { position: absolute; top: 0; bottom: 0; width: 80%; float: left;}
+        #info {float: right; width: 20%; margin-left: 25px;}
+        #refreshButton { margin:5%; margin-bottom: 20%; float: right; }
+        </style>
+    </head>
+    <body>
+        <div id="map"></div>
+        
+        <div id="info">
+            <button id="refreshButton">Refresh Data</button>
+            <p style="top: 20%;">
+                <strong>The map gives information on the condition of the road from the starting point to
+                     destination </strong>
+                <ul>
+                    <li>The red indicates potholes are very common in those coordinate</li>
+                    <li>The blue indicates speed bumps along the road surface</li>
+                    <li>The green indicates smooth road condition</li>
+                    <li>The yellow indicates road condition that were not labelled</li>
+                    
+                </ul>
+            </p>
+        </div>
+        <script>
+            mapboxgl.accessToken = 'pk.eyJ1IjoiZDEtYSIsImEiOiJjbG5wenNsYm0wdjJiMmpvNmQ2MGM4cjF0In0.p8vTrfPpJJwefXfaBvkN6Q';
+            const map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [4.21256961794208, 7.383951587987909],
+                zoom: 3
+            });
+
+            // URL of your JSONBin.io bin
+            var url = 'https://api.jsonbin.io/v3/b/65342cbe12a5d376598ec0f4/latest';
+
+            // Function to check if the data is a valid GeoJSON object
+            function isValidGeoJSON(data) {
+                return (
+                    data &&
+                    data.type === 'FeatureCollection' &&
+                    Array.isArray(data.features)
+                );
+            }
+
+            // Function to load data and update the map
+            function loadDataAndRefreshMap() {
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Master-Key': '$2a$10$zzvq4m4G6R4LQo.7P2Jw.uEJLlccEFVzIAan8rrMnc3xI/IsyYqMq',
+                        'X-Bin-Private': 'false'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (isValidGeoJSON(data.record)) {
+                        // Save the data to local storage
+                        localStorage.setItem('cachedData', JSON.stringify(data.record));
+
+                        // Update the map
+                        map.getSource('route').setData(data.record);
+                    } else {
+                        console.error('Invalid GeoJSON data.');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+            // Check for cached data in local storage
+            const cachedData = localStorage.getItem('cachedData');
+            if (cachedData) {
+                // If cached data exists, use it to display the map
+                map.on('load', () => {
+                    map.addSource('route', {
+                        type: 'geojson',
+                        data: JSON.parse(cachedData)
+                    });
+
+                    map.addLayer({
+                        id: 'route',
+                        type: 'line',
+                        source: 'route',
+                        layout: {
+                            'line-join': 'round',
+                            'line-cap': 'round',
+                        },
+                        paint: {
+                            'line-color': [
+                                'match',
+                                ['get', 'road_label'],
+                                'smooth',
+                                'green',
+                                'bumps',
+                                'blue',
+                                'pothole',
+                                'red',
+                                'orange'
+                            ],
+                            'line-width': 8
+                        }
+                    });
+                });
+            } else {
+                // If no cached data exists, load data from the API
+                loadDataAndRefreshMap();
+            }
+
+            // Add an event listener to the refresh button
+            document.getElementById('refreshButton').addEventListener('click', () => {
+                // Clear the cached data and load fresh data from the API
+                localStorage.removeItem('cachedData');
+                loadDataAndRefreshMap();
+            });
+
+            const direction = [
+                {
+                    name: 'Starting Place',
+                    lnglat: [5.164936112895788, 7.287329309883347]
+                },
+                {
+                    name: 'Destination',
+                    lnglat: [3.9447855455410377, 7.402896879622858]
+                }
+            ];
+
+            direction.forEach(({ name, lnglat }) => {
+                const popup = new mapboxgl.Popup({ offset: 25 }).setText(name);
+
+                new mapboxgl.Marker({
+                    scale: 0.7
+                })
+                    .setLngLat(lnglat)
+                    .setPopup(popup)
+                    .addTo(map);
+            });
+        </script>
+    </body>
+</html>
