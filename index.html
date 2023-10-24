@@ -10,7 +10,12 @@
         body { margin: 0; padding: 0;  }
         #map { position: absolute; top: 0; bottom: 0; width: 80%; float: left;}
         #info {float: right; width: 20%; margin-left: 25px;}
-        #refreshButton { margin:5%; margin-bottom: 20%; float: right; }
+        #refreshButton { margin:5%; margin-bottom: 20%; display: block; }
+        @media screen and (max-width: 720px) {
+            #map { position: absolute; top: 0; bottom: 0; width: 100%; display:block;}
+            #info {display:contents; width: 100%; margin-top: 25px;}
+            #refreshButton { margin:5%; margin-bottom: 20%;display: block;}
+        }
         </style>
     </head>
     <body>
